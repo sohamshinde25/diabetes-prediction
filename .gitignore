@@ -1,0 +1,24 @@
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# macOS files
+.DS_Store
+
+# Streamlit config / cache
+.streamlit/
+
+# Output plots / cache
+*.log

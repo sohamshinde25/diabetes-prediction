@@ -1,0 +1,104 @@
+{
+  "logistic_regression": {
+    "model_path": "logistic_regression.joblib",
+    "feature_importance": {
+      "Pregnancies": 0.1363,
+      "Glucose": 0.4272,
+      "BloodPressure": 0.0159,
+      "SkinThickness": 0.0102,
+      "Insulin": 0.0239,
+      "BMI": 0.2488,
+      "DiabetesPedigreeFunction": 0.0843,
+      "Age": 0.0534
+    },
+    "cv_metrics": {
+      "accuracy": {
+        "mean": 0.7882313741170198,
+        "std": 0.019056824693417025
+      },
+      "precision": {
+        "mean": 0.7638075920023182,
+        "std": 0.05977298511205282
+      },
+      "recall": {
+        "mean": 0.5747508305647842,
+        "std": 0.022727749337524358
+      },
+      "f1": {
+        "mean": 0.6545454545454545,
+        "std": 0.024423199069116826
+      },
+      "roc_auc": {
+        "mean": 0.8433637873754153,
+        "std": 0.018549552071526722
+      }
+    },
+    "test_metrics": {
+      "accuracy": 0.7077922077922078,
+      "balanced_accuracy": 0.6599999999999999,
+      "precision": 0.6,
+      "recall": 0.5,
+      "specificity": 0.82,
+      "f1": 0.5454545454545454,
+      "roc_auc": 0.812962962962963,
+      "pr_auc": 0.673326163579994,
+      "confusion_matrix": {
+        "tn": 82,
+        "fp": 18,
+        "fn": 27,
+        "tp": 27
+      }
+    }
+  },
+  "random_forest": {
+    "model_path": "random_forest.joblib",
+    "feature_importance": {
+      "Pregnancies": 0.0638,
+      "Glucose": 0.3624,
+      "BloodPressure": 0.0514,
+      "SkinThickness": 0.0533,
+      "Insulin": 0.0924,
+      "BMI": 0.171,
+      "DiabetesPedigreeFunction": 0.0899,
+      "Age": 0.1158
+    },
+    "cv_metrics": {
+      "accuracy": {
+        "mean": 0.776862588298014,
+        "std": 0.01763217613763938
+      },
+      "precision": {
+        "mean": 0.7329572766959336,
+        "std": 0.06419636990878508
+      },
+      "recall": {
+        "mean": 0.5796234772978959,
+        "std": 0.030486039769291637
+      },
+      "f1": {
+        "mean": 0.6445061728395062,
+        "std": 0.013709263692451843
+      },
+      "roc_auc": {
+        "mean": 0.8354360465116277,
+        "std": 0.020796650596697133
+      }
+    },
+    "test_metrics": {
+      "accuracy": 0.7467532467532467,
+      "balanced_accuracy": 0.6985185185185185,
+      "precision": 0.6744186046511628,
+      "recall": 0.5370370370370371,
+      "specificity": 0.86,
+      "f1": 0.5979381443298969,
+      "roc_auc": 0.8127777777777778,
+      "pr_auc": 0.6890815687864372,
+      "confusion_matrix": {
+        "tn": 86,
+        "fp": 14,
+        "fn": 25,
+        "tp": 29
+      }
+    }
+  }
+}
