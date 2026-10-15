@@ -1,7 +1,7 @@
 """Inference and risk scoring engine for Diabetes Risk Prediction.
 
 Provides single-patient risk evaluation, batch scoring, input validation,
-and clinical risk factor contextualization.
+and statistical factor contextualization.
 """
 
 from pathlib import Path
@@ -37,7 +37,7 @@ def load_model(model_type: str = "random_forest"):
 
 
 def validate_patient_inputs(inputs: Dict[str, Any]) -> List[str]:
-    """Validate patient features against biological reference ranges.
+    """Validate patient features against biological reference ranges and numeric constraints.
 
     Returns:
         List of warning/validation messages (empty if all are within bounds).
@@ -45,12 +45,24 @@ def validate_patient_inputs(inputs: Dict[str, Any]) -> List[str]:
     warnings = []
     for col, (min_val, max_val) in FEATURE_RANGES.items():
         if col in inputs:
-            val = inputs[col]
-            if val is not None and not np.isnan(val):
-                if val < min_val or val > max_val:
-                    warnings.append(
-                        f"Value for {col} ({val}) is outside typical biological range ({min_val} - {max_val})."
-                    )
+            raw_val = inputs[col]
+            if raw_val is None:
+                continue
+            try:
+                val = float(raw_val)
+            except (ValueError, TypeError):
+                warnings.append(f"Value for {col} ('{raw_val}') is not a valid number.")
+                continue
+
+            if np.isnan(val):
+                continue
+
+            if val < 0:
+                warnings.append(f"Value for {col} ({val}) cannot be negative.")
+            elif val < min_val or val > max_val:
+                warnings.append(
+                    f"Value for {col} ({val}) is outside typical biological reference range ({min_val} - {max_val})."
+                )
     return warnings
 
 
@@ -58,21 +70,27 @@ def predict_risk(
     patient_data: Dict[str, Any],
     model_type: str = "random_forest",
 ) -> Dict[str, Any]:
-    """Calculate diabetes risk probability and clinical assessment for a single individual.
+    """Calculate diabetes risk probability and assessment for a single individual.
 
     Args:
         patient_data: Dictionary containing patient clinical measurements.
         model_type: Which trained classifier to use ('random_forest' or 'logistic_regression').
 
     Returns:
-        Dictionary with probability, risk category, contributing factors, and clinical advice.
+        Dictionary with probability, risk category, contributing factors, and model summary.
     """
     pipeline = load_model(model_type)
 
-    # Format into DataFrame with correct columns
+    # Format into DataFrame with correct columns and types
     row_data = {}
     for col in DEFAULT_FEATURE_NAMES:
-        val = patient_data.get(col, np.nan)
+        raw_val = patient_data.get(col, np.nan)
+        try:
+            val = float(raw_val) if raw_val is not None else np.nan
+        except (ValueError, TypeError):
+            val = np.nan
+
+        # Convert physiologically impossible zero measurements to NaN for pipeline imputer
         if col in ZERO_AS_MISSING_COLS and val == 0:
             val = np.nan
         row_data[col] = [val]
@@ -82,46 +100,49 @@ def predict_risk(
     proba = float(pipeline.predict_proba(df_patient)[0, 1])
     predicted_class = int(pipeline.predict(df_patient)[0])
 
-    # Clinical risk classification
+    # Statistical risk categorization (Heuristic probability bands)
     if proba < 0.35:
         risk_level = "Low Risk"
         color = "#10b981"  # Emerald
-        summary = "Model indicators suggest low probability of diabetes. Standard healthy lifestyle maintenance advised."
+        summary = "Estimated probability of diabetes is low based on the benchmark model."
     elif proba < 0.65:
         risk_level = "Moderate Risk"
         color = "#f59e0b"  # Amber
-        summary = "Borderline clinical markers detected. Regular screening and preventative lifestyle consultation recommended."
+        summary = "Estimated probability of diabetes is in the intermediate band."
     else:
         risk_level = "High Risk"
         color = "#ef4444"  # Crimson
-        summary = "Elevated risk profile detected. Comprehensive clinical evaluation (HbA1c / OGTT) by a healthcare professional strongly recommended."
+        summary = "Estimated probability of diabetes is in the elevated band. Note: This exploratory tool does not constitute medical diagnosis."
 
-    # Identify individual risk factors
+    # Identify notable feature contributions based on normative reference thresholds
     contributing_factors = []
-    glucose = patient_data.get("Glucose", 0)
-    bmi = patient_data.get("BMI", 0)
-    age = patient_data.get("Age", 0)
-    bp = patient_data.get("BloodPressure", 0)
-    pedigree = patient_data.get("DiabetesPedigreeFunction", 0)
+    try:
+        glucose = float(patient_data.get("Glucose", 0) or 0)
+        bmi = float(patient_data.get("BMI", 0) or 0)
+        age = float(patient_data.get("Age", 0) or 0)
+        bp = float(patient_data.get("BloodPressure", 0) or 0)
+        pedigree = float(patient_data.get("DiabetesPedigreeFunction", 0) or 0)
 
-    if glucose and glucose >= 140:
-        contributing_factors.append(f"Elevated Plasma Glucose ({glucose} mg/dL; impaired glucose tolerance or diabetic range)")
-    elif glucose and glucose >= 100:
-        contributing_factors.append(f"Borderline Fasting Glucose ({glucose} mg/dL)")
+        if glucose >= 140:
+            contributing_factors.append(f"Elevated Plasma Glucose ({glucose:.0f} mg/dL; post-challenge threshold)")
+        elif glucose >= 100:
+            contributing_factors.append(f"Borderline Plasma Glucose ({glucose:.0f} mg/dL)")
 
-    if bmi and bmi >= 30.0:
-        contributing_factors.append(f"Obese BMI category ({bmi:.1f} kg/m²; metabolic strain)")
-    elif bmi and bmi >= 25.0:
-        contributing_factors.append(f"Overweight BMI category ({bmi:.1f} kg/m²)")
+        if bmi >= 30.0:
+            contributing_factors.append(f"BMI in Obese category ({bmi:.1f} kg/m²)")
+        elif bmi >= 25.0:
+            contributing_factors.append(f"BMI in Overweight category ({bmi:.1f} kg/m²)")
 
-    if age and age >= 45:
-        contributing_factors.append(f"Age factor ({age} years; risk increases significantly over 45)")
+        if age >= 45:
+            contributing_factors.append(f"Age demographic ({age:.0f} years)")
 
-    if bp and bp >= 90:
-        contributing_factors.append(f"Elevated Diastolic Blood Pressure ({bp} mm Hg)")
+        if bp >= 90:
+            contributing_factors.append(f"Elevated Diastolic Blood Pressure ({bp:.0f} mm Hg)")
 
-    if pedigree and pedigree >= 0.8:
-        contributing_factors.append(f"High Genetic Predisposition score ({pedigree:.2f})")
+        if pedigree >= 0.8:
+            contributing_factors.append(f"High Genetic Pedigree score ({pedigree:.2f})")
+    except (ValueError, TypeError):
+        pass
 
     return {
         "probability": proba,
@@ -148,23 +169,30 @@ def predict_batch(
 
     Returns:
         DataFrame copy with added 'Diabetes_Risk_Probability' and 'Risk_Tier' columns.
-    """
-    pipeline = load_model(model_type)
-    df_copy = df.copy()
 
-    # Pre-clean zero-as-missing
-    for col in ZERO_AS_MISSING_COLS:
-        if col in df_copy.columns:
-            df_copy[col] = df_copy[col].replace(0, np.nan)
+    Raises:
+        ValueError: If required columns are missing or if DataFrame is empty.
+    """
+    if df.empty:
+        raise ValueError("Cannot perform batch prediction on an empty DataFrame.")
 
     # Ensure required feature columns exist
-    features_present = [c for c in DEFAULT_FEATURE_NAMES if c in df_copy.columns]
-    if len(features_present) != len(DEFAULT_FEATURE_NAMES):
-        missing = set(DEFAULT_FEATURE_NAMES) - set(features_present)
-        raise ValueError(f"Batch dataset missing required columns: {missing}")
+    missing_cols = [c for c in DEFAULT_FEATURE_NAMES if c not in df.columns]
+    if missing_cols:
+        raise ValueError(f"Batch dataset missing required columns: {missing_cols}")
 
-    X = df_copy[DEFAULT_FEATURE_NAMES]
-    probas = pipeline.predict_proba(X)[:, 1]
+    pipeline = load_model(model_type)
+    df_copy = df[DEFAULT_FEATURE_NAMES].copy()
+
+    # Coerce to numeric values safely
+    for col in DEFAULT_FEATURE_NAMES:
+        df_copy[col] = pd.to_numeric(df_copy[col], errors="coerce")
+
+    # Pre-clean zero-as-missing in physiological measures
+    for col in ZERO_AS_MISSING_COLS:
+        df_copy[col] = df_copy[col].replace(0, np.nan)
+
+    probas = pipeline.predict_proba(df_copy)[:, 1]
 
     result_df = df.copy()
     result_df["Diabetes_Risk_Probability"] = np.round(probas * 100, 1)

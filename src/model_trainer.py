@@ -3,6 +3,18 @@
 Implements strict featurization ordering, stratified cross-validation,
 model training for Logistic Regression and Random Forest, comprehensive
 metrics computation, and local persistence with Joblib.
+
+Data Leakage Safeguards:
+1. Featurization Ordering: train_test_split is performed BEFORE any imputer or
+   scaler is fit.
+2. Cross-Validation Isolation: Cross-validation runs inside scikit-learn's
+   cross_validate() over the training set only. Fold imputers/scalers are fit
+   strictly on fold training partitions.
+3. Model-Specific Preprocessing:
+   - Logistic Regression uses Median Imputation + StandardScaler.
+   - Random Forest uses Median Imputation without scaling (trees are scale-invariant).
+4. Held-Out Test Integrity: The test set is reserved exclusively for final
+   unbiased performance evaluation, never for model selection or tuning.
 """
 
 from pathlib import Path
@@ -41,6 +53,10 @@ from src.preprocessing import create_preprocessing_pipeline, DEFAULT_FEATURE_NAM
 def build_model_pipeline(classifier_type: str = "random_forest", random_state: int = 42) -> Pipeline:
     """Build a complete preprocessing + classifier pipeline.
 
+    Applies tailored preprocessing:
+    - 'logistic_regression': Median Imputation + Standard Scaling
+    - 'random_forest': Median Imputation only (no scaling needed for tree-based models)
+
     Args:
         classifier_type: 'logistic_regression' or 'random_forest'.
         random_state: Seed for reproducibility.
@@ -48,9 +64,8 @@ def build_model_pipeline(classifier_type: str = "random_forest", random_state: i
     Returns:
         Configured Pipeline.
     """
-    preprocessor = create_preprocessing_pipeline()
-
     if classifier_type == "logistic_regression":
+        preprocessor = create_preprocessing_pipeline(include_scaler=True)
         classifier = LogisticRegression(
             C=1.0,
             solver="lbfgs",
@@ -58,6 +73,7 @@ def build_model_pipeline(classifier_type: str = "random_forest", random_state: i
             random_state=random_state,
         )
     elif classifier_type == "random_forest":
+        preprocessor = create_preprocessing_pipeline(include_scaler=False)
         classifier = RandomForestClassifier(
             n_estimators=200,
             max_depth=6,
@@ -80,20 +96,20 @@ def evaluate_pipeline(
     y_test: pd.Series,
     cv_folds: int = 5,
 ) -> Dict[str, Any]:
-    """Train pipeline, perform stratified k-fold cross-validation, and evaluate on test set.
+    """Train pipeline, perform stratified k-fold cross-validation on train set, and evaluate on held-out test set.
 
     Args:
         pipeline: The sklearn Pipeline to evaluate.
         X_train: Training features.
         y_train: Training labels.
-        X_test: Test features.
+        X_test: Test features (held-out, never used for training or fold selection).
         y_test: Test labels.
         cv_folds: Number of stratified cross-validation folds.
 
     Returns:
         Dictionary containing CV scores, test set metrics, and confusion matrix.
     """
-    # 1. Stratified Cross-Validation on Training set (avoids test leakage)
+    # 1. Stratified Cross-Validation on Training set only (guarantees zero test set leakage)
     cv = StratifiedKFold(n_splits=cv_folds, shuffle=True, random_state=42)
     scoring = {
         "accuracy": "accuracy",
@@ -104,10 +120,10 @@ def evaluate_pipeline(
     }
     cv_results = cross_validate(pipeline, X_train, y_train, cv=cv, scoring=scoring, n_jobs=-1)
 
-    # 2. Fit on full training set
+    # 2. Fit pipeline on full training set
     pipeline.fit(X_train, y_train)
 
-    # 3. Predict on held-out test set
+    # 3. Predict on held-out test set for unbiased final verification
     y_pred = pipeline.predict(X_test)
     y_proba = pipeline.predict_proba(X_test)[:, 1]
 
@@ -146,12 +162,11 @@ def evaluate_pipeline(
 
 
 def extract_feature_importance(pipeline: Pipeline, feature_names: list) -> Dict[str, float]:
-    """Extract feature importance or normalized absolute coefficients from a fitted pipeline."""
+    """Extract feature importance (RF) or normalized absolute coefficients (LR) from a fitted pipeline."""
     clf = pipeline.named_steps["classifier"]
     if hasattr(clf, "feature_importances_"):
         importances = clf.feature_importances_
     elif hasattr(clf, "coef_"):
-        # Normalized absolute coefficients for logistic regression
         coefs = np.abs(clf.coef_[0])
         total = np.sum(coefs)
         importances = coefs / total if total > 0 else coefs
@@ -180,6 +195,9 @@ def train_and_save_all_models(
 
     df = load_raw_data(data_path)
     X, y = prepare_features_and_target(df, convert_zeroes_to_nan=True)
+
+    # Verify feature names match DEFAULT_FEATURE_NAMES
+    assert list(X.columns) == DEFAULT_FEATURE_NAMES, "Feature order mismatch with DEFAULT_FEATURE_NAMES"
 
     # Strict featurization ordering: split before fitting preprocessors
     X_train, X_test, y_train, y_test = train_test_split(

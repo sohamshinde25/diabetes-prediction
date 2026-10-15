@@ -1,7 +1,7 @@
 """Interactive Diabetes Risk Prediction Web Application.
 
 Built with Streamlit, scikit-learn, and custom modern CSS.
-Strictly $0 USD Total Budget — Runs 100% locally on personal compute.
+Exploratory machine learning application on the historical Pima Indians Diabetes dataset.
 """
 
 from pathlib import Path
@@ -16,13 +16,13 @@ from src.preprocessing import DEFAULT_FEATURE_NAMES
 
 # Page configuration
 st.set_page_config(
-    page_title="GlucoSense | Diabetes Risk Prediction",
+    page_title="Diabetes Risk Prediction | ML Explorer",
     page_icon="🩺",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# Custom Styling (Rich Aesthetics, Glassmorphism, Google Fonts)
+# Custom Styling (Clean Modern Aesthetics, Glassmorphism, Google Fonts)
 CUSTOM_CSS = """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -31,7 +31,6 @@ html, body, [class*="css"] {
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-/* Background gradient styling */
 .main {
     background: radial-gradient(circle at top left, #f8fafc 0%, #edf2f7 100%);
 }
@@ -75,12 +74,6 @@ html, body, [class*="css"] {
     letter-spacing: 0.02em;
 }
 
-.badge-free {
-    background-color: rgba(16, 185, 129, 0.15);
-    color: #34d399;
-    border: 1px solid rgba(16, 185, 129, 0.3);
-}
-
 .badge-auc {
     background-color: rgba(59, 130, 246, 0.15);
     color: #60a5fa;
@@ -88,12 +81,11 @@ html, body, [class*="css"] {
 }
 
 .badge-local {
-    background-color: rgba(168, 85, 247, 0.15);
-    color: #c084fc;
-    border: 1px solid rgba(168, 85, 247, 0.3);
+    background-color: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.3);
 }
 
-/* Metric / Card styling */
 .glass-card {
     background: white;
     border-radius: 14px;
@@ -104,11 +96,6 @@ html, body, [class*="css"] {
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.glass-card:hover {
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.07);
-}
-
-/* Risk Result Banner */
 .risk-meter-container {
     background: white;
     border-radius: 16px;
@@ -135,7 +122,6 @@ html, body, [class*="css"] {
     margin: 0.5rem 0;
 }
 
-/* Risk Progress Bar */
 .progress-bg {
     background: #e2e8f0;
     border-radius: 9999px;
@@ -150,7 +136,6 @@ html, body, [class*="css"] {
     transition: width 0.6s ease-in-out;
 }
 
-/* Factor list */
 .factor-item {
     display: flex;
     align-items: center;
@@ -167,7 +152,6 @@ html, body, [class*="css"] {
     border-left-color: #10b981;
 }
 
-/* Disclaimer footer */
 .disclaimer-card {
     background: #f1f5f9;
     border-left: 4px solid #64748b;
@@ -196,15 +180,14 @@ def get_metrics():
 st.markdown(
     """
 <div class="hero-card">
-    <div class="hero-title">🩺 GlucoSense Risk AI</div>
+    <div class="hero-title">🩺 Diabetes Risk Prediction</div>
     <div class="hero-subtitle">
-        Clinical-grade Machine Learning for early Type 2 Diabetes screening and prevention analytics.
-        Trained strictly on open-access epidemiological data with reproducible scikit-learn pipelines.
+        An interactive machine learning exploration evaluating Logistic Regression and Random Forest
+        classifiers on the historical Pima Indians Diabetes benchmark dataset.
     </div>
     <div>
-        <span class="badge-pill badge-free">✦ $0 Budget Verified (100% Free)</span>
-        <span class="badge-pill badge-auc">✦ ROC-AUC: 0.813</span>
-        <span class="badge-pill badge-local">✦ Local Compute Only</span>
+        <span class="badge-pill badge-auc">✦ ROC-AUC: 0.812 (RF) / 0.813 (LR)</span>
+        <span class="badge-pill badge-local">✦ Leakage-Aware scikit-learn Pipeline</span>
     </div>
 </div>
 """,
@@ -217,39 +200,39 @@ metrics = get_metrics()
 with st.sidebar:
     st.image(
         "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=600&auto=format&fit=crop&q=80",
-        caption="Preventative Health Screening",
+        caption="Health Screening Analytics",
         use_container_width=True,
     )
 
-    st.subheader("⚙️ Analysis Settings")
+    st.subheader("⚙️ Model Configuration")
 
     model_choice = st.selectbox(
-        "Active Prediction Model",
+        "Active Prediction Pipeline",
         options=["random_forest", "logistic_regression"],
-        format_func=lambda x: "Random Forest (Recommended)" if x == "random_forest" else "Logistic Regression (Linear Baseline)",
+        format_func=lambda x: "Random Forest (Non-linear Ensemble)" if x == "random_forest" else "Logistic Regression (Linear Baseline)",
         help="Select which scikit-learn model pipeline executes inference.",
     )
 
     app_mode = st.radio(
         "Navigation",
-        options=["Patient Risk Calculator", "Model Insights & Metrics", "Batch CSV Screening", "Cost & Architecture Audit"],
+        options=["Patient Risk Calculator", "Model Insights & Metrics", "Batch CSV Screening", "Dataset & Architecture Details"],
         index=0,
     )
 
     st.markdown("---")
-    st.markdown("### 📋 Quick Clinical Presets")
+    st.markdown("### 📋 Sample Input Profiles")
     preset = st.selectbox(
-        "Load Clinical Profile",
-        options=["Custom Inputs", "Preset: Healthy Individual", "Preset: Borderline / Pre-Diabetic", "Preset: Elevated Risk"],
+        "Load Benchmark Profile",
+        options=["Custom Inputs", "Preset: Normative Profile", "Preset: Intermediate Profile", "Preset: Elevated Risk Profile"],
     )
 
     st.markdown("---")
     st.markdown(
         """
         <div style="font-size: 0.8rem; color: #64748b; line-height: 1.4;">
-            <strong>Open-Source Stack</strong><br>
+            <strong>Technical Stack</strong><br>
             Python 3.12 · scikit-learn · Streamlit · Joblib<br>
-            Zero external paid APIs. Runs 100% locally.
+            Local execution with open-source libraries.
         </div>
         """,
         unsafe_allow_html=True,
@@ -260,7 +243,6 @@ with st.sidebar:
 # TAB 1: PATIENT RISK CALCULATOR
 # ---------------------------------------------------------
 if app_mode == "Patient Risk Calculator":
-    # Preset Values handling
     defaults = {
         "Pregnancies": 1,
         "Glucose": 105,
@@ -272,7 +254,7 @@ if app_mode == "Patient Risk Calculator":
         "Age": 32,
     }
 
-    if preset == "Preset: Healthy Individual":
+    if preset == "Preset: Normative Profile":
         defaults = {
             "Pregnancies": 0,
             "Glucose": 88,
@@ -283,7 +265,7 @@ if app_mode == "Patient Risk Calculator":
             "DiabetesPedigreeFunction": 0.20,
             "Age": 26,
         }
-    elif preset == "Preset: Borderline / Pre-Diabetic":
+    elif preset == "Preset: Intermediate Profile":
         defaults = {
             "Pregnancies": 2,
             "Glucose": 125,
@@ -294,7 +276,7 @@ if app_mode == "Patient Risk Calculator":
             "DiabetesPedigreeFunction": 0.55,
             "Age": 42,
         }
-    elif preset == "Preset: Elevated Risk":
+    elif preset == "Preset: Elevated Risk Profile":
         defaults = {
             "Pregnancies": 4,
             "Glucose": 172,
@@ -309,33 +291,34 @@ if app_mode == "Patient Risk Calculator":
     col_inputs, col_results = st.columns([1.15, 1], gap="large")
 
     with col_inputs:
-        st.markdown("### 👤 Patient Clinical Parameters")
-        st.caption("Enter patient diagnostic metrics or use presets from the sidebar.")
+        st.markdown("### 👤 Patient Input Features")
+        st.caption("Adjust input parameters or select a reference profile from the sidebar.")
 
         c1, c2 = st.columns(2)
         with c1:
             glucose = st.slider(
-                "Plasma Glucose (2-hr OGTT)",
+                "Plasma Glucose (2-hr OGTT, mg/dL)",
                 min_value=50,
                 max_value=250,
                 value=int(defaults["Glucose"]),
                 step=1,
-                help="Fasting normal: <100 mg/dL. Pre-diabetes: 100-125 mg/dL. Diabetes: ≥126 mg/dL (fasting) or ≥140 mg/dL (post-challenge).",
+                help="Reference threshold: <100 mg/dL normal, 100-125 borderline, >=140 elevated post-challenge.",
             )
             bmi = st.slider(
-                "Body Mass Index (BMI)",
+                "Body Mass Index (BMI, kg/m²)",
                 min_value=14.0,
                 max_value=60.0,
                 value=float(defaults["BMI"]),
                 step=0.1,
-                help="Healthy weight: 18.5 - 24.9 kg/m². Overweight: 25.0 - 29.9. Obese: ≥30.0.",
+                help="Reference categories: 18.5-24.9 normal, 25.0-29.9 overweight, >=30.0 obese.",
             )
             age = st.slider(
-                "Patient Age (years)",
-                min_value=18,
+                "Age (years)",
+                min_value=21,
                 max_value=100,
-                value=int(defaults["Age"]),
+                value=max(21, int(defaults["Age"])),
                 step=1,
+                help="Cohort inclusion criterion in original study was age >= 21.",
             )
             pregnancies = st.slider(
                 "Number of Pregnancies",
@@ -343,7 +326,7 @@ if app_mode == "Patient Risk Calculator":
                 max_value=17,
                 value=int(defaults["Pregnancies"]),
                 step=1,
-                help="Gestational diabetes history increases long-term risk.",
+                help="Zero is biologically valid for nulliparous women.",
             )
 
         with c2:
@@ -353,7 +336,6 @@ if app_mode == "Patient Risk Calculator":
                 max_value=140,
                 value=int(defaults["BloodPressure"]),
                 step=1,
-                help="Normal diastolic: <80 mm Hg. Elevated: 80-89 mm Hg. Stage 2 hypertension: ≥90 mm Hg.",
             )
             insulin = st.slider(
                 "2-Hour Serum Insulin (µU/mL)",
@@ -361,7 +343,6 @@ if app_mode == "Patient Risk Calculator":
                 max_value=600,
                 value=int(defaults["Insulin"]),
                 step=5,
-                help="Normal fasting range: 16-166 µU/mL. Higher values often indicate insulin resistance.",
             )
             pedigree = st.slider(
                 "Diabetes Pedigree Function",
@@ -369,7 +350,7 @@ if app_mode == "Patient Risk Calculator":
                 max_value=2.50,
                 value=float(defaults["DiabetesPedigreeFunction"]),
                 step=0.01,
-                help="Genetic risk score based on family diabetes history and relatedness.",
+                help="Continuous genetic risk score based on family history.",
             )
             skin_thickness = st.slider(
                 "Triceps Skinfold Thickness (mm)",
@@ -377,14 +358,16 @@ if app_mode == "Patient Risk Calculator":
                 max_value=70,
                 value=int(defaults["SkinThickness"]),
                 step=1,
-                help="Estimator of peripheral subcutaneous adiposity.",
             )
 
-        # What-If Interactive Expander
-        with st.expander("🧪 What-If Lifestyle Intervention Simulation", expanded=False):
-            st.write("Simulate how targeted lifestyle interventions could shift this patient's risk profile:")
-            wi_glucose_drop = st.slider("Simulate Glucose Reduction (mg/dL)", 0, 60, 15)
-            wi_bmi_drop = st.slider("Simulate BMI Reduction (kg/m²)", 0.0, 10.0, 2.5)
+        # Model Sensitivity Exploration
+        with st.expander("🧪 Model Sensitivity Exploration", expanded=False):
+            st.caption(
+                "Observe how adjusting features shifts the model's estimated probability across the learned response surface. "
+                "Note: Associative ML models capture statistical correlations, not causal intervention effects."
+            )
+            wi_glucose_delta = st.slider("Perturb Glucose (mg/dL)", -40, 40, -15)
+            wi_bmi_delta = st.slider("Perturb BMI (kg/m²)", -8.0, 8.0, -2.5)
 
     # Compute Prediction
     patient_dict = {
@@ -400,20 +383,19 @@ if app_mode == "Patient Risk Calculator":
 
     prediction = predict_risk(patient_dict, model_type=model_choice)
 
-    # What-If Computation
+    # Sensitivity Computation
     simulated_patient = patient_dict.copy()
-    simulated_patient["Glucose"] = max(70, glucose - wi_glucose_drop)
-    simulated_patient["BMI"] = max(18.5, bmi - wi_bmi_drop)
+    simulated_patient["Glucose"] = max(50, glucose + wi_glucose_delta)
+    simulated_patient["BMI"] = max(14.0, bmi + wi_bmi_delta)
     sim_prediction = predict_risk(simulated_patient, model_type=model_choice)
 
     with col_results:
-        st.markdown("### 📊 Assessment & Risk Score")
+        st.markdown("### 📊 Model Output & Probability")
 
         prob_pct = prediction["risk_percentage"]
         color = prediction["color"]
         level = prediction["risk_level"]
 
-        # Dynamic Risk Card
         st.markdown(
             f"""
             <div class="risk-meter-container">
@@ -424,13 +406,13 @@ if app_mode == "Patient Risk Calculator":
                     {prob_pct}%
                 </div>
                 <div style="font-size: 0.95rem; color: #64748b; font-weight: 500;">
-                    Predicted Probability of Diabetes
+                    Model Predicted Probability
                 </div>
                 <div class="progress-bg">
                     <div class="progress-fill" style="width: {prob_pct}%; background-color: {color};"></div>
                 </div>
                 <div style="font-size: 0.92rem; color: #475569; line-height: 1.5; text-align: left; background: #f8fafc; padding: 1rem; border-radius: 10px; margin-top: 1rem;">
-                    <strong>Clinical Summary:</strong><br>{prediction["summary"]}
+                    <strong>Summary:</strong><br>{prediction["summary"]}
                 </div>
             </div>
             """,
@@ -438,7 +420,7 @@ if app_mode == "Patient Risk Calculator":
         )
 
         st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown("#### 🔍 Primary Contributing Factors")
+        st.markdown("#### 🔍 Notable Contributing Indicators")
         if prediction["contributing_factors"]:
             for factor in prediction["contributing_factors"]:
                 st.markdown(
@@ -451,14 +433,14 @@ if app_mode == "Patient Risk Calculator":
                 unsafe_allow_html=True,
             )
 
-        # What-If Intervention Impact
-        if wi_glucose_drop > 0 or wi_bmi_drop > 0:
-            diff = prob_pct - sim_prediction["risk_percentage"]
-            st.markdown("#### 📉 Projected Intervention Benefit")
+        # Sensitivity Impact Display
+        if wi_glucose_delta != 0 or wi_bmi_delta != 0:
+            diff = sim_prediction["risk_percentage"] - prob_pct
+            st.markdown("#### 📈 Response Surface Shift")
             st.info(
-                f"With a **{wi_glucose_drop} mg/dL** glucose reduction and **{wi_bmi_drop:.1f} kg/m²** weight loss, "
-                f"the patient's risk drops from **{prob_pct}%** to **{sim_prediction['risk_percentage']}%** "
-                f"(**-{diff:.1f}% absolute risk reduction**)."
+                f"With Glucose adjusted by **{wi_glucose_delta:+d} mg/dL** and BMI by **{wi_bmi_delta:+.1f} kg/m²**, "
+                f"the model output shifts from **{prob_pct}%** to **{sim_prediction['risk_percentage']}%** "
+                f"(**{diff:+.1f}% probability shift**)."
             )
 
 
@@ -466,8 +448,8 @@ if app_mode == "Patient Risk Calculator":
 # TAB 2: MODEL INSIGHTS & METRICS
 # ---------------------------------------------------------
 elif app_mode == "Model Insights & Metrics":
-    st.markdown("### 🧠 Model Evaluation & Transparency")
-    st.caption("Rigorous cross-validation on training data and validation on held-out test data (80/20 stratified split).")
+    st.markdown("### 🧠 Model Evaluation & Comparison")
+    st.caption("Evaluated on held-out test data (80/20 stratified split, N=154).")
 
     if metrics:
         col_m1, col_m2 = st.columns(2)
@@ -478,7 +460,7 @@ elif app_mode == "Model Insights & Metrics":
                 f"""
                 <div class="glass-card">
                     <h4 style="color: #0f172a; margin-top:0;">🌲 Random Forest Classifier</h4>
-                    <p style="color: #64748b; font-size: 0.9rem;">Ensemble of 200 regularized decision trees with median imputation.</p>
+                    <p style="color: #64748b; font-size: 0.9rem;">Ensemble of 200 regularized trees with median imputation (scale-invariant).</p>
                     <table style="width: 100%; font-size: 0.95rem; border-collapse: collapse;">
                         <tr><td style="padding: 6px 0; color:#475569;">Test Accuracy</td><td style="text-align: right; font-weight:700;">{rf_test.get('accuracy', 0)*100:.1f}%</td></tr>
                         <tr><td style="padding: 6px 0; color:#475569;">Test ROC-AUC</td><td style="text-align: right; font-weight:700; color: #10b981;">{rf_test.get('roc_auc', 0):.3f}</td></tr>
@@ -498,7 +480,7 @@ elif app_mode == "Model Insights & Metrics":
                 f"""
                 <div class="glass-card">
                     <h4 style="color: #0f172a; margin-top:0;">📈 Logistic Regression (Baseline)</h4>
-                    <p style="color: #64748b; font-size: 0.9rem;">L2-regularized linear model on standardized physiological features.</p>
+                    <p style="color: #64748b; font-size: 0.9rem;">L2-regularized linear model with median imputation and standard scaling.</p>
                     <table style="width: 100%; font-size: 0.95rem; border-collapse: collapse;">
                         <tr><td style="padding: 6px 0; color:#475569;">Test Accuracy</td><td style="text-align: right; font-weight:700;">{lr_test.get('accuracy', 0)*100:.1f}%</td></tr>
                         <tr><td style="padding: 6px 0; color:#475569;">Test ROC-AUC</td><td style="text-align: right; font-weight:700; color: #3b82f6;">{lr_test.get('roc_auc', 0):.3f}</td></tr>
@@ -519,13 +501,13 @@ elif app_mode == "Model Insights & Metrics":
 
         df_fi = pd.DataFrame({
             "Feature": list(rf_fi.keys()),
-            "Random Forest": [rf_fi[k] for k in rf_fi],
-            "Logistic Regression": [lr_fi.get(k, 0) for k in rf_fi],
+            "Random Forest (MDI)": [rf_fi[k] for k in rf_fi],
+            "Logistic Regression (Norm |Coef|)": [lr_fi.get(k, 0) for k in rf_fi],
         }).set_index("Feature")
 
         st.bar_chart(df_fi)
         st.caption(
-            "Notice how both models independently confirm that Glucose and BMI are by far the strongest clinical predictors."
+            "Feature importance reflects statistical association in the training data, not causal clinical evidence."
         )
 
 
@@ -533,10 +515,9 @@ elif app_mode == "Model Insights & Metrics":
 # TAB 3: BATCH CSV SCREENING
 # ---------------------------------------------------------
 elif app_mode == "Batch CSV Screening":
-    st.markdown("### 📁 Batch Patient Screening")
-    st.caption("Upload a patient cohort CSV file to compute risk scores for hundreds of individuals at once.")
+    st.markdown("### 📁 Batch Cohort Screening")
+    st.caption("Upload a patient cohort CSV file to compute model estimates for multiple records.")
 
-    # Provide sample template download
     sample_df = pd.DataFrame([
         {"Pregnancies": 1, "Glucose": 85, "BloodPressure": 66, "SkinThickness": 29, "Insulin": 94, "BMI": 26.6, "DiabetesPedigreeFunction": 0.35, "Age": 31},
         {"Pregnancies": 6, "Glucose": 148, "BloodPressure": 72, "SkinThickness": 35, "Insulin": 0, "BMI": 33.6, "DiabetesPedigreeFunction": 0.63, "Age": 50},
@@ -550,7 +531,7 @@ elif app_mode == "Batch CSV Screening":
         mime="text/csv",
     )
 
-    uploaded_file = st.file_uploader("Upload Patient Cohort CSV", type=["csv"])
+    uploaded_file = st.file_uploader("Upload Cohort CSV", type=["csv"])
 
     if uploaded_file is not None:
         try:
@@ -563,14 +544,12 @@ elif app_mode == "Batch CSV Screening":
                 st.success("Analysis complete!")
                 st.dataframe(scored_df, use_container_width=True)
 
-                # Distribution summary
                 col_b1, col_b2, col_b3 = st.columns(3)
                 tier_counts = scored_df["Risk_Tier"].value_counts()
                 col_b1.metric("Low Risk Cohort", tier_counts.get("Low Risk", 0))
                 col_b2.metric("Moderate Risk Cohort", tier_counts.get("Moderate Risk", 0))
                 col_b3.metric("High Risk Cohort", tier_counts.get("High Risk", 0))
 
-                # Download scored file
                 csv_out = scored_df.to_csv(index=False).encode("utf-8")
                 st.download_button(
                     "💾 Download Scored Results (CSV)",
@@ -583,36 +562,26 @@ elif app_mode == "Batch CSV Screening":
 
 
 # ---------------------------------------------------------
-# TAB 4: COST & ARCHITECTURE AUDIT
+# TAB 4: DATASET & ARCHITECTURE DETAILS
 # ---------------------------------------------------------
-elif app_mode == "Cost & Architecture Audit":
-    st.markdown("### 🛡️ $0 Budget & Architecture Verification")
-    st.caption("Full audit demonstrating absolute zero spend and local execution.")
+elif app_mode == "Dataset & Architecture Details":
+    st.markdown("### 🔬 Dataset & Architecture Overview")
 
-    audit_items = [
-        ("Cloud Compute / GPU", "Local Apple M-series / x86 CPU only. No AWS, GCP, or Azure compute.", "✅ $0.00"),
-        ("Model APIs", "No OpenAI, Gemini, Claude, or paid LLM/AI APIs used.", "✅ $0.00"),
-        ("Database / Hosting", "Local file-based dataset & local Joblib storage. No cloud DB charges.", "✅ $0.00"),
-        ("Dataset Acquisition", "Open-access Pima Indians Diabetes Dataset from UCI / NIDDK.", "✅ $0.00"),
-        ("Libraries & Tooling", "100% Free Open Source: Python 3.12, scikit-learn, Streamlit, Pandas, NumPy.", "✅ $0.00"),
-        ("Version Control", "Local Git with standard free GitHub repository integration.", "✅ $0.00"),
-    ]
-
-    for title, desc, cost in audit_items:
-        st.markdown(
-            f"""
-            <div class="glass-card" style="display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <h5 style="margin: 0; color: #0f172a;">{title}</h5>
-                    <p style="margin: 0; color: #64748b; font-size: 0.88rem;">{desc}</p>
-                </div>
-                <div style="font-size: 1.1rem; font-weight: 700; color: #10b981;">
-                    {cost}
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+    st.markdown(
+        """
+        <div class="glass-card">
+            <h4 style="color: #0f172a; margin-top:0;">Dataset Provenance & Cohort</h4>
+            <p style="color: #475569; font-size: 0.92rem; line-height: 1.6;">
+                <strong>Source:</strong> National Institute of Diabetes and Digestive and Kidney Diseases (NIDDK), 1988.<br>
+                <strong>Cohort:</strong> 768 female subjects aged &ge; 21 of Pima Indian heritage living near Phoenix, Arizona.<br>
+                <strong>Missing Value Handling:</strong> Biologically impossible zeros in Glucose (5), BloodPressure (35), SkinThickness (227),
+                Insulin (374), and BMI (11) are converted to NaN and imputed using training-set medians. Legitimate zeros in Pregnancies (111) are strictly preserved.<br>
+                <strong>Generalizability Limitation:</strong> Findings from this historical cohort cannot be assumed to generalize across diverse clinical populations without external validation.
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     st.markdown("#### 🔬 Reproducibility Commands")
     st.code(
@@ -634,10 +603,10 @@ streamlit run app.py
 st.markdown(
     """
 <div class="disclaimer-card">
-    <strong>⚠️ Clinical Disclaimer:</strong>
-    GlucoSense is an educational decision-support tool powered by machine learning on retrospective observational data.
-    It does not constitute formal medical diagnosis, prognosis, or clinical treatment advice.
-    Always consult a licensed physician or endocrinologist for clinical blood testing (fasting glucose, HbA1c) and professional diagnosis.
+    <strong>⚠️ Educational & Research Disclaimer:</strong>
+    This application is an educational machine learning demonstration developed for exploratory analysis.
+    It does not constitute formal medical diagnosis, clinical prognosis, or treatment advice.
+    Always consult a licensed medical professional for clinical evaluation and laboratory testing.
 </div>
 """,
     unsafe_allow_html=True,
