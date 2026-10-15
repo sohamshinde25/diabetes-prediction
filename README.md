@@ -1,69 +1,89 @@
 # Diabetes Risk Prediction
 
-[![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Tests: Pytest](https://img.shields.io/badge/Tests-Passing-brightgreen.svg)](tests/)
-[![Framework: Streamlit](https://img.shields.io/badge/UI-Streamlit-red.svg)](app.py)
-
-An end-to-end machine learning project exploring diabetes outcome classification using the historical Pima Indians Diabetes dataset. It covers data-quality checks, leakage-aware preprocessing, model comparison, evaluation, and an interactive Streamlit demonstration.
+An end-to-end machine learning project exploring diabetes classification on the Pima Indians Diabetes dataset. I built this project to understand how to handle tabular healthcare data properly—specifically focusing on data quality anomalies, preventing data leakage with scikit-learn pipelines, and honestly evaluating model trade-offs between linear and tree-based approaches.
 
 ---
 
-## 📌 Problem Overview
+## Why I Built This
 
-Type 2 diabetes is a chronic metabolic condition characterized by insulin resistance and relative deficiency. Early identification of individuals with elevated risk patterns can assist preventative screening programs. This project investigates whether non-invasive physiological and demographic attributes can reliably predict diabetes onset within five years of examination.
+The Pima Indians Diabetes dataset is one of the most common beginner datasets in machine learning, but many tutorial implementations take shortcuts:
+- They treat all zeros as valid numbers, ignoring that a blood pressure or glucose level of zero is biologically impossible in a living person.
+- They fit scalers or imputers on the whole dataset before splitting into train and test sets, which leaks test information into training.
+- They report accuracy alone without discussing recall or false negatives, which is the most dangerous metric to overlook in disease screening.
 
-### Dataset Provenance & Cohort
-* **Source**: National Institute of Diabetes and Digestive and Kidney Diseases (NIDDK), 1988 (Smith et al., 1988; UCI Machine Learning Repository).
-* **Cohort**: 768 female subjects aged $\ge 21$ years of Pima Indian heritage living near Phoenix, Arizona.
-* **Target (`Outcome`)**: Binary diagnosis ($1 = \text{positive}, 0 = \text{negative}$).
-* **Prevalence**: 500 negative cases (65.10%), 268 positive cases (34.90%).
-
-### Critical Dataset Limitations
-1. **Demographic Specificity**: The study population consists exclusively of adult female Pima Indians. Results cannot be generalized across broader multi-ethnic, male, or pediatric cohorts without external recalibration.
-2. **Missing Modern Biomarkers**: Foundational modern diagnostic biomarkers like Glycated Hemoglobin (HbA1c) and fasting C-peptide were not recorded in this 1988 dataset.
-3. **Associative, Not Causal**: The models estimate statistical correlation on observational data; predictions do not represent causal treatment effects.
+I wanted to build a clean, modular repository that handles these problems correctly:
+1. Feature-specific missing value handling that respects human physiology.
+2. Leakage-free preprocessing pipelines where imputation and scaling are fitted strictly on training data.
+3. Decoupled preprocessing where tree-based models are not unnecessarily scaled.
+4. An honest analysis of model trade-offs (including why a 53.7% recall matters).
+5. An interactive Streamlit web app for single-patient and batch CSV screening.
 
 ---
 
-## ⚙️ Technical Approach & Pipeline Architecture
+## Dataset & Context
+
+* **Source**: National Institute of Diabetes and Digestive and Kidney Diseases (NIDDK), 1988 (Smith et al., 1988; hosted by UCI Machine Learning Repository).
+* **Cohort**: 768 female subjects of Pima Indian heritage, aged 21 or older, living near Phoenix, Arizona.
+* **Target (`Outcome`)**: Binary indicator (1 = tested positive for diabetes within 5 years of examination, 0 = tested negative).
+* **Class Distribution**: 500 negative cases (65.1%) and 268 positive cases (34.9%).
+
+### The Zero-Value Nuance
+Looking closely at the summary statistics reveals that several continuous features have minimum values of zero:
+- **`Pregnancies`**: 111 zeros (14.5%). A value of zero represents a woman who has never been pregnant (nulliparous). **This is biologically valid and must be kept as 0.**
+- **`Glucose`**: 5 zeros (0.7%). Plasma glucose cannot be 0 in a living person.
+- **`BloodPressure`**: 35 zeros (4.6%). Diastolic pressure cannot be 0 during an exam.
+- **`SkinThickness`**: 227 zeros (29.6%). Skinfold thickness cannot be 0.
+- **`Insulin`**: 374 zeros (48.7%). Circulating serum insulin is never zero; nearly half the cohort had this test omitted.
+- **`BMI`**: 11 zeros (1.4%). Weight and height are strictly positive.
+
+For these five features, zeros represent missing measurements. The pipeline converts them to `NaN` and imputes them using training-set medians. Median imputation was chosen because features like insulin and skinfold thickness are right-skewed with heavy tails.
+
+### Known Limitations
+* **Demographic Specificity**: All subjects are adult females of Pima Indian heritage. The models cannot be assumed to generalize to males, children, or other ethnic populations without external validation.
+* **Missing Modern Biomarkers**: Modern clinical diagnostics rely heavily on Glycated Hemoglobin (HbA1c) and fasting C-peptide, which were not collected in this 1988 study.
+* **Unknown Missingness Mechanism**: The original documentation does not explain why specific participants had missing insulin or skinfold measurements. We cannot assume data is missing completely at random (MCAR).
+* **Correlation vs. Causation**: This is an observational study. Feature importance reflects statistical associations in this dataset, not causal clinical advice.
+
+---
+
+## Pipeline Architecture
 
 ```
-Raw CSV (768 rows)
+data/diabetes.csv (768 rows)
    │
-   ├── [1] Data Quality & Schema Validation (src/data_loader.py)
-   │     • Preserve valid zeros: Pregnancies = 0 (111 nulliparous records)
-   │     • Map impossible zeros to NaN: Glucose (5), BP (35), SkinThickness (227), Insulin (374), BMI (11)
+   ├── Schema Validation & Zero Cleaning (src/data_loader.py)
+   │     • Pregnancies = 0 kept
+   │     • Glucose, BP, SkinThickness, Insulin, BMI zeros -> NaN
    │
-   ├── [2] Featurization Split (80/20 Stratified, seed=42)
-   │     • Train set (N=614, 34.85% positives)
-   │     • Held-out test set (N=154, 35.06% positives, strictly isolated)
+   ├── Stratified Train/Test Split (80/20, seed=42)
+   │     • Train set: 614 rows (34.85% positive)
+   │     • Test set: 154 rows (35.06% positive, isolated until final evaluation)
    │
-   ├── [3] Leakage-Free Preprocessing Pipelines (src/preprocessing.py)
+   ├── Model-Specific Pipelines (src/preprocessing.py)
    │     • Logistic Regression: SimpleImputer(median) + StandardScaler()
-   │     • Random Forest: SimpleImputer(median) only (scale-invariant)
+   │     • Random Forest: SimpleImputer(median) only (trees are scale-invariant)
    │
-   ├── [4] Model Training & Cross-Validation (src/model_trainer.py)
-   │     • 5-Fold Stratified Cross-Validation on training set
-   │     • Model persistence via Joblib (models/)
+   ├── 5-Fold Stratified Cross-Validation on Training Set (src/model_trainer.py)
+   │     • Folds fit imputation inside each fold to avoid cross-fold leakage
    │
-   └── [5] Evaluation & Inference (src/predict.py & app.py)
-         • Held-out test set benchmark
-         • Streamlit web interface with sensitivity exploration & batch CSV scoring
+   └── Local Inference & Web Interface (src/predict.py, app.py)
+         • Single patient scoring with range validation
+         • Batch CSV cohort screening
+         • Feature sensitivity exploration
 ```
 
-### Data Leakage Safeguards
-- **Strict Featurization Order**: Train/test splitting occurs before any imputer or scaler is fit.
-- **Cross-Validation Isolation**: Imputation and scaling transformers are fit strictly on fold-training partitions during 5-fold cross-validation.
-- **Tailored Preprocessing**: Feature standardization (`StandardScaler`) is applied to Logistic Regression (where regularization requires uniform scale) and omitted for Random Forest (which is invariant to monotonic transformations).
+### Why Decouple Scaling?
+Logistic Regression uses gradient-based optimization with an L2 penalty, so features with larger ranges would be penalized more heavily without `StandardScaler`. 
+
+Random Forest, on the other hand, evaluates split points based only on feature rank order ($x_j \le \theta$). Monotonic scaling has no effect on tree splits. Omitting scaling for Random Forest keeps the pipeline cleaner and avoids redundant computation.
 
 ---
 
-## 📊 Model Evaluation Results
+## Verified Results
 
-### 1. Held-Out Test Set Metrics ($N=154$, 20% Stratified Split)
+### 1. Held-Out Test Set Evaluation ($N=154$, 20% Stratified Split)
 
-The held-out test set was evaluated once as an unbiased generalization check:
+The held-out test set was evaluated once at the very end as an unbiased generalization check:
 
 | Metric | Random Forest | Logistic Regression (Baseline) |
 |---|---|---|
@@ -85,7 +105,7 @@ The held-out test set was evaluated once as an unbiased generalization check:
 | **CV Recall** | **58.0% ± 3.0%** | 57.5% ± 2.3% |
 | **CV F1-Score** | 64.5% ± 1.4% | **65.5% ± 2.4%** |
 
-### 3. Confusion Matrix Analysis (Random Forest Test Set)
+### 3. Confusion Matrix Analysis (Random Forest on Test Set)
 
 ```
                  Predicted Negative   Predicted Positive
@@ -93,62 +113,67 @@ Actual Negative          86 (TN)              14 (FP)
 Actual Positive          25 (FN)              29 (TP)
 ```
 
-* **Understanding Recall (53.7%) and False Negatives**: At the default decision threshold ($p \ge 0.50$), Random Forest correctly identifies 29 diabetic patients but misses 25. In disease screening, false negatives represent individuals whose condition remains undetected. This moderate sensitivity is driven by class imbalance (34.9% positive rate) and threshold placement. Lowering the decision threshold increases recall (sensitivity) at the expense of false positives (lower precision).
+**Key Takeaway on Recall (53.7%)**:  
+At the default classification threshold of 0.50, Random Forest identifies 29 diabetic patients but misses 25. In healthcare screening, a False Negative (missing someone who has the disease) is generally far more serious than a False Positive (which leads to a confirmatory lab test).
 
-### 4. Feature Importance (Statistical Association)
-* **Leading Associations**: Plasma Glucose (~36.2% RF, ~42.7% LR) and Body Mass Index (~17.1% RF, ~24.9% LR) consistently exhibit the highest statistical association with diabetes outcome across both models.
-* *Note*: Feature importance reflects empirical predictive utility within this dataset, not causal clinical evidence.
+This low recall happens because:
+1. The dataset has class imbalance (~35% positive).
+2. The default threshold of 0.50 favors precision over sensitivity.
+
+If this were being deployed in a screening clinic, we would lower the decision threshold (e.g., to 0.35) to capture more true positives, accepting more false alarms in exchange for fewer missed cases.
+
+### 4. Feature Importance
+Across both models, **Plasma Glucose** (~36% RF, ~43% LR) and **BMI** (~17% RF, ~25% LR) are consistently the strongest statistical predictors, followed by Age and the Diabetes Pedigree Function. This aligns with clinical understanding that fasting blood sugar and adiposity correlate strongly with insulin resistance.
 
 ---
 
-## 🛠️ Project Structure
+## Project Structure
 
 ```
 diabetes-prediction/
 ├── data/
-│   └── diabetes.csv                     # Historical Pima Indians Diabetes Dataset
+│   └── diabetes.csv                     # Pima Indians Diabetes Dataset
 ├── docs/
-│   └── DATASET_DOCUMENTATION.md         # Detailed provenance, feature ranges, and zero audit
+│   ├── DATASET_DOCUMENTATION.md         # Detailed provenance, ranges, and zero audit
+│   └── INTERVIEW_PREPARATION.md         # Interview questions, architecture, and defense guide
 ├── models/
-│   ├── logistic_regression.joblib       # Serialized Logistic Regression pipeline
-│   ├── random_forest.joblib             # Serialized Random Forest pipeline
-│   └── metrics.json                     # Verified cross-validation and test evaluation metrics
+│   ├── logistic_regression.joblib       # Fitted Logistic Regression pipeline
+│   ├── random_forest.joblib             # Fitted Random Forest pipeline
+│   └── metrics.json                     # Verified evaluation metrics
 ├── notebooks/
 │   └── diabetes_analysis.ipynb          # Executed Jupyter analysis notebook with EDA & plots
 ├── scripts/
-│   └── build_notebook.py                # Notebook generator script
+│   └── build_notebook.py                # Notebook generation script
 ├── src/
 │   ├── __init__.py
-│   ├── data_loader.py                   # Schema validation, raw ingestion, zero handling
-│   ├── preprocessing.py                 # Tailored preprocessing pipelines
-│   ├── model_trainer.py                 # Cross-validation, model training, artifact persistence
+│   ├── data_loader.py                   # Data loading, schema validation, zero-value handling
+│   ├── preprocessing.py                 # Decoupled preprocessing pipelines
+│   ├── model_trainer.py                 # Cross-validation, training, artifact saving
 │   └── predict.py                       # Single-patient and batch inference engine
 ├── tests/
 │   ├── test_data_loader.py              # Schema, bounds, and zero-preservation tests
-│   ├── test_preprocessing.py            # Pipeline steps and train-only leakage isolation tests
-│   ├── test_model.py                    # Pipeline architecture and stratification tests
+│   ├── test_preprocessing.py            # Preprocessing steps and train-only leakage tests
+│   ├── test_model.py                    # Architecture and stratification tests
 │   └── test_predict.py                  # Single-patient, batch, and validation tests
-├── .gitignore                           # Git ignore rules
-├── app.py                               # Interactive Streamlit application
+├── .gitignore                           # Standard Python/macOS ignore rules
+├── app.py                               # Interactive Streamlit web app
 ├── pytest.ini                           # Pytest configuration
-├── requirements.txt                     # Curated open-source dependencies
-└── README.md                            # Project documentation
+├── requirements.txt                     # Curated core dependencies
+└── README.md
 ```
 
 ---
 
-## 🚀 Quickstart & Reproduction
+## How to Run Locally
 
-The project runs locally and relies exclusively on free, open-source libraries.
-
-### 1. Environment Setup
+### 1. Setup Environment
 
 ```bash
 # Clone the repository
 git clone https://github.com/sohamshinde25/diabetes-prediction.git
 cd diabetes-prediction
 
-# Create and activate Python 3.12 virtual environment
+# Create and activate a Python 3.12 virtual environment
 python3.12 -m venv .venv
 source .venv/bin/activate
 
@@ -156,21 +181,27 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 2. Run Test Suite
+### 2. Run Tests
 
 ```bash
 pytest -v
 ```
 
-### 3. Launch Streamlit Application
+All 23 unit tests should pass in under 2 seconds.
+
+### 3. Launch the Streamlit App
 
 ```bash
 streamlit run app.py
 ```
 
-The interactive application will open at `http://localhost:8501`.
+The app will open at `http://localhost:8501`. It includes:
+* **Patient Risk Calculator**: Live risk estimation across heuristic probability bands.
+* **Model Sensitivity Exploration**: Visualizes how adjusting inputs shifts the model's output probability along the learned boundary.
+* **Batch CSV Screening**: Upload a cohort CSV, score all records, and download the annotated file.
+* **Model Transparency Tab**: View verified metrics, confusion matrices, and feature importance.
 
-### 4. Reproduce Model Training & Metrics
+### 4. Retrain Models
 
 ```bash
 python src/model_trainer.py
@@ -178,6 +209,6 @@ python src/model_trainer.py
 
 ---
 
-## ⚠️ Educational & Research Disclaimer
+## Disclaimer
 
-This project is an educational machine learning exploration developed for academic and technical placement evaluation. It is not an FDA-approved medical diagnostic tool and does not provide clinical diagnoses, prognosis, or medical advice.
+This project is an educational machine learning exploration built for academic study and technical placement evaluation. It is not an FDA-approved medical diagnostic tool and does not provide clinical diagnoses, prognosis, or medical advice.

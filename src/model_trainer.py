@@ -109,7 +109,7 @@ def evaluate_pipeline(
     Returns:
         Dictionary containing CV scores, test set metrics, and confusion matrix.
     """
-    # 1. Stratified Cross-Validation on Training set only (guarantees zero test set leakage)
+    # Cross-validation on train split only to measure generalization without test leakage
     cv = StratifiedKFold(n_splits=cv_folds, shuffle=True, random_state=42)
     scoring = {
         "accuracy": "accuracy",
@@ -120,10 +120,9 @@ def evaluate_pipeline(
     }
     cv_results = cross_validate(pipeline, X_train, y_train, cv=cv, scoring=scoring, n_jobs=-1)
 
-    # 2. Fit pipeline on full training set
     pipeline.fit(X_train, y_train)
 
-    # 3. Predict on held-out test set for unbiased final verification
+    # Evaluate on held-out test set once for unbiased benchmark
     y_pred = pipeline.predict(X_test)
     y_proba = pipeline.predict_proba(X_test)[:, 1]
 
